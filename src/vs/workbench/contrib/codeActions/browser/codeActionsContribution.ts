@@ -149,7 +149,7 @@ export class CodeActionsContribution extends Disposable implements IWorkbenchCon
 		providers.forEach(provider => {
 			if (provider.providedCodeActionKinds) {
 				provider.providedCodeActionKinds.forEach(kind => {
-					if (!this.settings.has(kind) && CodeActionKind.Source.contains(new HierarchicalKind(kind))) {
+					if (!this.settings.has(kind) && (CodeActionKind.Source.contains(new HierarchicalKind(kind)) || CodeActionKind.QuickFix.contains(new HierarchicalKind(kind)))) {
 						this.settings.add(kind);
 					}
 				});
@@ -191,7 +191,7 @@ export class CodeActionsContribution extends Disposable implements IWorkbenchCon
 		for (const contribution of contributions) {
 			for (const action of contribution.actions) {
 				const kind = new HierarchicalKind(action.kind);
-				if (CodeActionKind.Source.contains(kind)) {
+				if (CodeActionKind.Source.contains(kind) || CodeActionKind.QuickFix.contains(kind)) {
 					sourceActions.set(kind.value, action);
 				}
 			}
