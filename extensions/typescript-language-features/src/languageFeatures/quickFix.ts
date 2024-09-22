@@ -215,9 +215,10 @@ class SupportedCodeActionProvider {
 class TypeScriptQuickFixProvider implements vscode.CodeActionProvider<VsCodeCodeAction> {
 
 	private static readonly _maxCodeActionsPerFile: number = 1000;
+	static readonly kind = vscode.CodeActionKind.QuickFix.append('ts');
 
 	public static readonly metadata: vscode.CodeActionProviderMetadata = {
-		providedCodeActionKinds: [vscode.CodeActionKind.QuickFix.append('ts')]
+		providedCodeActionKinds: [TypeScriptQuickFixProvider.kind]
 	};
 
 	private readonly supportedCodeActionProvider: SupportedCodeActionProvider;
@@ -350,7 +351,7 @@ class TypeScriptQuickFixProvider implements vscode.CodeActionProvider<VsCodeCode
 		action: Proto.CodeFixAction
 	): VsCodeCodeAction[] {
 		const actions: VsCodeCodeAction[] = [];
-		const codeAction = new VsCodeCodeAction(action, action.description, vscode.CodeActionKind.QuickFix);
+		const codeAction = new VsCodeCodeAction(action, action.description, TypeScriptQuickFixProvider.kind);
 		codeAction.edit = getEditForCodeAction(this.client, action);
 		codeAction.diagnostics = [diagnostic];
 		codeAction.ranges = [diagnostic.range];
@@ -382,7 +383,7 @@ class TypeScriptQuickFixProvider implements vscode.CodeActionProvider<VsCodeCode
 				expand = { kind: 'code-action', action };
 			}
 			else if (action.fixName === fixNames.inferFromUsage) {
-				const inferFromBody = new VsCodeCodeAction(action, 'Infer types using Copilot', vscode.CodeActionKind.QuickFix);
+				const inferFromBody = new VsCodeCodeAction(action, 'Infer types using Copilot', TypeScriptQuickFixProvider.kind);
 				inferFromBody.edit = new vscode.WorkspaceEdit();
 				inferFromBody.diagnostics = [diagnostic];
 				inferFromBody.ranges = [diagnostic.range];
@@ -409,7 +410,7 @@ class TypeScriptQuickFixProvider implements vscode.CodeActionProvider<VsCodeCode
 				};
 			}
 			if (expand && message !== undefined) {
-				const aiCodeAction = new VsCodeCodeAction(action, title, vscode.CodeActionKind.QuickFix);
+				const aiCodeAction = new VsCodeCodeAction(action, title, TypeScriptQuickFixProvider.kind);
 				aiCodeAction.edit = getEditForCodeAction(this.client, action);
 				aiCodeAction.edit?.insert(document.uri, diagnostic.range.start, '');
 				aiCodeAction.diagnostics = [diagnostic];
@@ -465,7 +466,7 @@ class TypeScriptQuickFixProvider implements vscode.CodeActionProvider<VsCodeCode
 			tsAction,
 			file,
 			tsAction.fixAllDescription || vscode.l10n.t("{0} (Fix all in file)", tsAction.description),
-			vscode.CodeActionKind.QuickFix);
+			TypeScriptQuickFixProvider.kind);
 
 		action.diagnostics = [diagnostic];
 		action.ranges = [diagnostic.range];
