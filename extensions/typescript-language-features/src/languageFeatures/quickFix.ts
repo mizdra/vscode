@@ -217,7 +217,7 @@ class TypeScriptQuickFixProvider implements vscode.CodeActionProvider<VsCodeCode
 	private static readonly _maxCodeActionsPerFile: number = 1000;
 
 	public static readonly metadata: vscode.CodeActionProviderMetadata = {
-		providedCodeActionKinds: [vscode.CodeActionKind.QuickFix]
+		providedCodeActionKinds: [vscode.CodeActionKind.QuickFix.append('ts')]
 	};
 
 	private readonly supportedCodeActionProvider: SupportedCodeActionProvider;
