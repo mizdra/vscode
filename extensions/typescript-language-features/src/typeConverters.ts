@@ -11,6 +11,7 @@ import * as vscode from 'vscode';
 import type * as Proto from './tsServer/protocol/protocol';
 import * as PConst from './tsServer/protocol/protocol.const';
 import { ITypeScriptServiceClient } from './typescriptService';
+import * as fileSchemes from './configuration/fileSchemes';
 
 export namespace Range {
 	export const fromTextSpan = (span: Proto.TextSpan): vscode.Range =>
@@ -95,6 +96,9 @@ export namespace WorkspaceEdit {
 	): vscode.WorkspaceEdit {
 		for (const edit of edits) {
 			const resource = client.toResource(edit.fileName);
+			if (resource.scheme === fileSchemes.file) {
+				workspaceEdit.createFile(resource, { ignoreIfExists: true });
+			}
 			for (const textChange of edit.textChanges) {
 				workspaceEdit.replace(resource,
 					Range.fromTextSpan(textChange),
