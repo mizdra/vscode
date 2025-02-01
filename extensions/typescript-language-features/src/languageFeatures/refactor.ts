@@ -24,19 +24,6 @@ import FormattingOptionsManager from './fileConfigurationManager';
 import { CompositeCommand, EditorChatFollowUp } from './util/copilot';
 import { conditionalRegistration, requireSomeCapability } from './util/dependentRegistration';
 
-function toWorkspaceEdit(client: ITypeScriptServiceClient, edits: readonly Proto.FileCodeEdits[]): vscode.WorkspaceEdit {
-	const workspaceEdit = new vscode.WorkspaceEdit();
-	for (const edit of edits) {
-		const resource = client.toResource(edit.fileName);
-		if (resource.scheme === fileSchemes.file) {
-			workspaceEdit.createFile(resource, { ignoreIfExists: true });
-		}
-	}
-	typeConverters.WorkspaceEdit.withFileCodeEdits(workspaceEdit, client, edits);
-	return workspaceEdit;
-}
-
-
 namespace DidApplyRefactoringCommand {
 	export interface Args {
 		readonly action: string;
@@ -157,7 +144,7 @@ class MoveToFileRefactorCommand implements Command {
 		if (response.type !== 'response' || !response.body) {
 			return;
 		}
-		const edit = toWorkspaceEdit(this.client, response.body.edits);
+		const edit = typeConverters.WorkspaceEdit.fromFileCodeEdits(this.client, response.body.edits);
 		if (!(await vscode.workspace.applyEdit(edit, { isRefactoring: true }))) {
 			vscode.window.showErrorMessage(vscode.l10n.t("Could not apply refactoring"));
 			return;
@@ -385,7 +372,7 @@ class InlinedCodeAction extends vscode.CodeAction {
 			return;
 		}
 
-		this.edit = toWorkspaceEdit(this.client, response.body.edits);
+		this.edit = typeConverters.WorkspaceEdit.fromFileCodeEdits(this.client, response.body.edits);
 		if (!this.edit.size) {
 			vscode.window.showErrorMessage(vscode.l10n.t("Could not apply refactoring"));
 			return;
