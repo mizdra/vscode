@@ -16,7 +16,7 @@ import { Schemas } from '../../../base/common/network.js';
 import { IExtensionDescription } from '../../../platform/extensions/common/extensions.js';
 import { ExtensionRuntime } from '../common/extHostTypes.js';
 import { CLIServer } from './extHostCLIServer.js';
-import { realpathSync } from '../../../base/node/pfs.js';
+import { realpathSync, writeFileSync } from '../../../base/node/pfs.js';
 import { ExtHostConsoleForwarder } from './extHostConsoleForwarder.js';
 import { ExtHostDiskFileSystemProvider } from './extHostDiskFileSystemProvider.js';
 import nodeModule from 'node:module';
@@ -83,29 +83,24 @@ class NodeModuleESMInterceptor extends RequireInterceptor {
 
 	// This string is a script that runs in the loader thread of NodeJS.
 	private static _loaderScript = `
+	import { readFileSync, rmSync } from 'node:fs';
 	let lookup;
-	export const initialize = async (context) => {
-		let requestIds = 0;
-		const { port } = context;
+	export const initialize = (context) => {
+		const { port, shared } = context;
 		const pendingRequests = new Map();
-		port.onmessage = (event) => {
-			const { id, url } = event.data;
-			pendingRequests.get(id)?.(url);
-		};
 		lookup = url => {
-			// debugger;
-			const myId = requestIds++;
-			return new Promise((resolve) => {
-				pendingRequests.set(myId, resolve);
-				port.postMessage({ id: myId, url, });
-			});
+			port.postMessage({ url });
+			Atomics.wait(shared, 0, 0);
+			const result = readFileSync('/tmp/vscode-module', 'utf8');
+			rmSync('/tmp/vscode-module');
+			return result;
 		};
 	};
-	export const resolve = async (specifier, context, nextResolve) => {
+	export const resolve = (specifier, context, nextResolve) => {
 		if (specifier !== 'vscode' || !context.parentURL) {
 			return nextResolve(specifier, context);
 		}
-		const otherUrl = await lookup(context.parentURL);
+		const otherUrl = lookup(context.parentURL);
 		return {
 			url: otherUrl,
 			shortCircuit: true,
@@ -122,7 +117,7 @@ class NodeModuleESMInterceptor extends RequireInterceptor {
 
 	protected override _installInterceptor(): void {
 
-		type Message = { id: string; url: string };
+		type Message = { url: string };
 
 		const apiInstances = new BidirectionalMap<typeof vscode, string>();
 		const apiImportDataUrl = new Map<string, string>();
@@ -144,6 +139,7 @@ class NodeModuleESMInterceptor extends RequireInterceptor {
 		// this is a workaround for the fact that the layer checker does not understand
 		// that onmessage is NodeJS API here
 		const port1LayerCheckerWorkaround: any = port1;
+		const shared = new Int32Array(new SharedArrayBuffer(4));
 
 		port1LayerCheckerWorkaround.onmessage = (e: { data: Message }) => {
 
@@ -154,7 +150,7 @@ class NodeModuleESMInterceptor extends RequireInterceptor {
 				assertType(apiModuleFactory);
 			}
 
-			const { id, url } = e.data;
+			const { url } = e.data;
 			const uri = URI.parse(url);
 
 			// Get or create the API instance. The interface is per extension and extensions are
@@ -174,15 +170,13 @@ class NodeModuleESMInterceptor extends RequireInterceptor {
 				apiImportDataUrl.set(key, scriptDataUrlSrc);
 			}
 
-			port1.postMessage({
-				id,
-				url: scriptDataUrlSrc
-			});
+			writeFileSync('/tmp/vscode-module', scriptDataUrlSrc);
+			Atomics.notify(shared, 0);
 		};
 
 		nodeModule.register(NodeModuleESMInterceptor._createDataUri(NodeModuleESMInterceptor._loaderScript), {
 			parentURL: import.meta.url,
-			data: { port: port2 },
+			data: { port: port2, shared },
 			transferList: [port2],
 		});
 
