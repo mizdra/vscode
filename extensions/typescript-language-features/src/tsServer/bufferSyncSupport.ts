@@ -172,6 +172,7 @@ class SyncedBuffer {
 			file: this.filepath,
 			fileContent: this.document.getText(),
 			projectRootPath: this.getProjectRootPath(this.document.uri),
+			languageId: this.document.languageId,
 		};
 
 		const scriptKind = mode2ScriptKind(this.document.languageId);
